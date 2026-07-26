@@ -1,0 +1,6 @@
+{
+  "name": "Jubilee Workbench & Autodiscography Engine",
+  "description": "An open-source creative memory topology & AI proposal engine for The Static Collective, integrating 26 albums with bounded Gemini generation and an append-only event ledger.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
