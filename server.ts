@@ -33,12 +33,53 @@ function getGeminiClient(): GoogleGenAI {
 }
 
 // In-memory Jubilee Ledger Store (simulating authority database)
-let ledgerEvents: EventReceipt[] = [...INITIAL_EVENTS];
-let activeIdeas: JubileeIdea[] = [...INITIAL_IDEAS];
-
-function calculateHash(prevHash: string, payloadStr: string): string {
-  return "0x" + crypto.createHash("sha256").update(prevHash + payloadStr).digest("hex").slice(0, 10);
+export function calculateCanonicalHash(
+  previousHash: string,
+  eventType: string,
+  actor: string,
+  timestamp: string,
+  payload: any
+): string {
+  const canonicalString = JSON.stringify({
+    previousHash,
+    eventType,
+    actor,
+    timestamp,
+    payload,
+  });
+  return "0x" + crypto.createHash("sha256").update(canonicalString).digest("hex");
 }
+
+// Compute baseline cryptographic SHA-256 hash chain for initial events
+function initializeLedgerChain(rawEvents: EventReceipt[]): EventReceipt[] {
+  const verifiedChain: EventReceipt[] = [];
+  let prevHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+  for (const evt of rawEvents) {
+    const currentHash = calculateCanonicalHash(prevHash, evt.eventType, evt.actor, evt.timestamp, evt.payload);
+    const verifiedEvt: EventReceipt = {
+      ...evt,
+      previousHash: prevHash,
+      currentHash: currentHash
+    };
+    verifiedChain.push(verifiedEvt);
+    prevHash = currentHash;
+  }
+  return verifiedChain;
+}
+
+let ledgerEvents: EventReceipt[] = initializeLedgerChain([...INITIAL_EVENTS]);
+let activeIdeas: JubileeIdea[] = [...INITIAL_IDEAS];
+let preservedParallels: Array<{
+  parallelId: string;
+  packetId: string;
+  timestamp: string;
+  title: string;
+  content: string;
+  reasoning: string;
+  actionTaken: "preserved_parallel" | "rejected" | "revised";
+  note?: string;
+}> = [];
 
 async function startServer() {
   const app = express();
@@ -51,14 +92,17 @@ async function startServer() {
     res.json({
       status: "ok",
       node: "jubilee-cluster-gateway",
-      version: "0.1-baseline",
+      version: "1.0-usable-workstation",
+      governingSentence: "Models propose. Humans harvest. Jubilee witnesses.",
+      storageMode: "in_memory_session_ledger",
+      persistenceNote: "Volatile runtime session ledger. Export receipts or harvest events to preserve across sessions.",
       nodes: [
-        { nodeId: "jubilee", name: "Jubilee Witness Ledger", role: "Authority & Append-only Chain", status: "online", version: "0.1" },
-        { nodeId: "seedforge", name: "SeedForge Proposal Node", role: "Bounded Gemini AI Proposal Generation", status: process.env.GEMINI_API_KEY ? "online" : "no_key", version: "2.4" },
+        { nodeId: "jubilee", name: "Jubilee Witness Ledger", role: "Authority & Append-only SHA-256 Chain", status: "online", version: "1.0" },
+        { nodeId: "seedforge", name: "SeedForge Proposal Node", role: "Bounded Gemini AI Proposal Generation", status: process.env.GEMINI_API_KEY ? "online" : "no_key", version: "2.5" },
         { nodeId: "autodisco", name: "Autodisco Archive Node", role: "26 Albums & Lore Substrate", status: "online", version: "1.0" },
-        { nodeId: "lamppost", name: "LampPost Cultivation Node", role: "Idea Germination & Pattern Cards", status: "online", version: "0.8" },
-        { nodeId: "recurv", name: "reCURV Repair Node", role: "Repair Scars & Epistemic States", status: "online", version: "0.9" },
-        { nodeId: "bananadash", name: "BananaDash Weather Surface", role: "Cluster Legibility & Read Projections", status: "online", version: "0.5" }
+        { nodeId: "lamppost", name: "LampPost Cultivation Node", role: "Idea Germination & Pattern Cards", status: "online", version: "1.0" },
+        { nodeId: "recurv", name: "reCURV Repair Node", role: "Repair Scars & Epistemic States", status: "online", version: "1.0" },
+        { nodeId: "bananadash", name: "BananaDash Weather Surface", role: "Cluster Legibility & Read Projections", status: "online", version: "0.8" }
       ],
       ledgerHead: ledgerEvents[ledgerEvents.length - 1]?.currentHash || "0x0",
       totalEvents: ledgerEvents.length,
@@ -93,6 +137,9 @@ async function startServer() {
         lanes: ["semantic"],
         dependencyStatus: "verified",
         reuseStatus: "eligible_for_consideration",
+        relationType: "inferred",
+        evidenceStrength: 0.88,
+        tensionDelta: "holds",
         evidence: [{
           lane: "semantic",
           kind: "semantic_similarity",
@@ -114,6 +161,9 @@ async function startServer() {
         lanes: ["lineage", "semantic"],
         dependencyStatus: "verified",
         reuseStatus: "eligible_for_consideration",
+        relationType: "direct",
+        evidenceStrength: 0.95,
+        tensionDelta: "holds",
         evidence: [{
           lane: "lineage",
           kind: "direct_relation",
@@ -135,6 +185,9 @@ async function startServer() {
         lanes: ["active_tension"],
         dependencyStatus: "verified",
         reuseStatus: "eligible_for_consideration",
+        relationType: "inferred",
+        evidenceStrength: 0.82,
+        tensionDelta: "introduces",
         evidence: [{
           lane: "active_tension",
           kind: "shared_tension",
@@ -155,6 +208,9 @@ async function startServer() {
         lanes: ["human_link", "lineage"],
         dependencyStatus: "verified",
         reuseStatus: "eligible_for_consideration",
+        relationType: "direct",
+        evidenceStrength: 0.98,
+        tensionDelta: "resolves",
         evidence: [{
           lane: "human_link",
           kind: "explicit_human_link",
@@ -175,6 +231,9 @@ async function startServer() {
         lanes: ["rejected_parallel"],
         dependencyStatus: "historical_complete",
         reuseStatus: "review_required",
+        relationType: "provisional",
+        evidenceStrength: 0.75,
+        tensionDelta: "holds",
         evidence: [{
           lane: "rejected_parallel",
           kind: "parallel_proposal",
@@ -196,6 +255,9 @@ async function startServer() {
           lanes: ["lineage", "semantic"],
           dependencyStatus: "verified",
           reuseStatus: "eligible_for_consideration",
+          relationType: "direct",
+          evidenceStrength: 1.0,
+          tensionDelta: "holds",
           evidence: [{
             lane: "lineage",
             kind: "shared_ancestor",
@@ -208,8 +270,9 @@ async function startServer() {
       res.json({
         snapshot: {
           ledgerHeadEventId: ledgerEvents[ledgerEvents.length - 1].eventId,
-          retrievalPolicyVersion: "jubilee-policy@v0.1",
+          retrievalPolicyVersion: "jubilee-policy@v1.0",
           indexVersion: "autodisco-26-v1.0",
+          retrievalMode: "heuristic_provisional",
           timestamp: new Date().toISOString()
         },
         results: results.slice(0, 6)
@@ -346,34 +409,40 @@ ${tensionsSummary}
   // API 3: Human Harvest to Jubilee Append-Only Ledger
   app.post("/api/jubilee/harvest", (req, res) => {
     try {
-      const { ideaId, ideaTitle, summary, content, era, lineagePacketId, proposalId, sourcesCount, tensionResolved } = req.body;
+      const { ideaId, ideaTitle, summary, content, era, lineagePacketId, proposalId, sourcesCount, tensionResolved, actor } = req.body;
 
       if (!summary || !content) {
         return res.status(400).json({ error: "Summary and content are required for human harvest" });
       }
 
       const prevHead = ledgerEvents[ledgerEvents.length - 1];
-      const previousHash = prevHead ? prevHead.currentHash : "0x0000000000";
+      const previousHash = prevHead ? prevHead.currentHash : "0x0000000000000000000000000000000000000000000000000000000000000000";
       const eventId = `evt_${Date.now()}_harvest`;
-      const currentHash = calculateHash(previousHash, summary + content);
+      const timestamp = new Date().toISOString();
+      const eventActor = actor || "human:jublEchat";
+      const eventType = "HARVEST_VERSION";
+
+      const payload = {
+        summary,
+        content,
+        lineagePacketId: lineagePacketId || undefined,
+        proposalId: proposalId || undefined,
+        sourcesCount: sourcesCount || 1,
+        tensionResolved
+      };
+
+      const currentHash = calculateCanonicalHash(previousHash, eventType, eventActor, timestamp, payload);
 
       const newEvent: EventReceipt = {
         eventId,
-        timestamp: new Date().toISOString(),
-        actor: "human:jublEchat",
-        eventType: "HARVEST_VERSION",
+        timestamp,
+        actor: eventActor,
+        eventType,
         ideaId: ideaId || `idea_${Date.now()}`,
         ideaTitle: ideaTitle || summary.slice(0, 30),
         previousHash,
         currentHash,
-        payload: {
-          summary,
-          content,
-          lineagePacketId: lineagePacketId || undefined,
-          proposalId: proposalId || undefined,
-          sourcesCount: sourcesCount || 1,
-          tensionResolved
-        }
+        payload
       };
 
       ledgerEvents.push(newEvent);
@@ -408,6 +477,116 @@ ${tensionsSummary}
     } catch (err: any) {
       console.error("Error in /api/jubilee/harvest:", err);
       res.status(500).json({ error: err.message || "Failed to harvest event to Jubilee ledger" });
+    }
+  });
+
+  // API 3.5: Preserve Parallel Branch or Rejected Proposal (Repair Scars)
+  app.post("/api/jubilee/parallel", (req, res) => {
+    try {
+      const { packetId, title, content, reasoning, actionTaken, note } = req.body;
+      const parallelItem = {
+        parallelId: `par_${Date.now()}`,
+        packetId: packetId || "pkt_unknown",
+        timestamp: new Date().toISOString(),
+        title: title || "Parallel Proposal Branch",
+        content: content || "",
+        reasoning: reasoning || "Preserved parallel option for alternative future consideration",
+        actionTaken: actionTaken || "preserved_parallel",
+        note: note || undefined
+      };
+      preservedParallels.push(parallelItem);
+
+      // Record a RECORD_REPAIR_SCAR event in the witness ledger as well so it is witnessed!
+      const prevHead = ledgerEvents[ledgerEvents.length - 1];
+      const previousHash = prevHead ? prevHead.currentHash : "0x0000000000000000000000000000000000000000000000000000000000000000";
+      const eventId = `evt_${Date.now()}_parallel`;
+      const timestamp = parallelItem.timestamp;
+      const eventActor = "human:jublEchat";
+      const eventType = "RECORD_REPAIR_SCAR";
+      const payload = {
+        summary: `Preserved parallel branch (${actionTaken}): ${title}`,
+        content,
+        repairScarNote: reasoning
+      };
+      const currentHash = calculateCanonicalHash(previousHash, eventType, eventActor, timestamp, payload);
+
+      const newEvent: EventReceipt = {
+        eventId,
+        timestamp,
+        actor: eventActor,
+        eventType,
+        ideaId: `idea_${Date.now()}`,
+        ideaTitle: title,
+        previousHash,
+        currentHash,
+        payload
+      };
+
+      ledgerEvents.push(newEvent);
+
+      res.json({ success: true, item: parallelItem, receipt: newEvent });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || "Failed to record parallel branch" });
+    }
+  });
+
+  // API 3.6: Verify Hash Chain Integrity
+  app.get("/api/jubilee/verify", (req, res) => {
+    try {
+      let isChainValid = true;
+      let brokenIndex = -1;
+      let brokenEventId = "";
+
+      let expectedPrevHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+      const verifiedDetails = ledgerEvents.map((evt, idx) => {
+        if (evt.previousHash !== expectedPrevHash) {
+          isChainValid = false;
+          if (brokenIndex === -1) {
+            brokenIndex = idx;
+            brokenEventId = evt.eventId;
+          }
+        }
+
+        const recomputedHash = calculateCanonicalHash(
+          evt.previousHash,
+          evt.eventType,
+          evt.actor,
+          evt.timestamp,
+          evt.payload
+        );
+
+        const isHashMatching = recomputedHash === evt.currentHash;
+        if (!isHashMatching) {
+          isChainValid = false;
+          if (brokenIndex === -1) {
+            brokenIndex = idx;
+            brokenEventId = evt.eventId;
+          }
+        }
+
+        expectedPrevHash = evt.currentHash;
+
+        return {
+          index: idx,
+          eventId: evt.eventId,
+          eventType: evt.eventType,
+          currentHash: evt.currentHash,
+          recomputedHash,
+          isVerified: isHashMatching && (idx === 0 || evt.previousHash === ledgerEvents[idx - 1].currentHash)
+        };
+      });
+
+      res.json({
+        isValid: isChainValid,
+        verifiedEventsCount: ledgerEvents.length,
+        headHash: ledgerEvents[ledgerEvents.length - 1]?.currentHash || "0x0",
+        storageMode: "in_memory_session_ledger",
+        brokenEventId: brokenIndex !== -1 ? brokenEventId : undefined,
+        chain: verifiedDetails
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || "Failed to verify ledger integrity" });
     }
   });
 

@@ -313,18 +313,33 @@ export const NearbyGrowthWorkbench: React.FC<NearbyGrowthWorkbenchProps> = ({
                         <span className={`font-mono text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${laneInfo.badge}`}>
                           Lane: {laneInfo.label}
                         </span>
+                        {res.relationType && (
+                          <span className="font-mono text-[9px] uppercase font-bold bg-[#fffbeb] text-[#78350f] border border-[#d4a017]/40 px-2 py-0.5 rounded-full">
+                            {res.relationType} relation
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-1.5 font-mono text-[10px]">
+                        {res.evidenceStrength && (
+                          <span className="text-[#92400e] bg-[#fdf0d5] px-2 py-0.5 rounded-full font-bold">
+                            {Math.round(res.evidenceStrength * 100)}% Match
+                          </span>
+                        )}
                         <span className="inline-flex items-center gap-1 text-[#5b8a72] bg-[#e8f0e9] px-2 py-0.5 rounded-full font-medium">
                           <ShieldCheck className="w-3 h-3" />
                           {res.dependencyStatus}
                         </span>
-                        <span className="text-[#8a7a65] bg-[#2b2117]/5 px-2 py-0.5 rounded-full">
-                          SafeSourceRef
-                        </span>
                       </div>
                     </div>
+
+                    {/* Tension Delta Indicator */}
+                    {res.tensionDelta && (
+                      <div className="font-mono text-[10px] text-[#78350f] bg-[#fffbeb] px-2.5 py-1 rounded-lg border border-[#d4a017]/30 flex items-center justify-between">
+                        <span>Creative Tension Delta: <strong>{res.tensionDelta}</strong></span>
+                        <span className="text-[#8a7a65]">SafeSourceRef: Available</span>
+                      </div>
+                    )}
 
                     {/* Album Title & Excerpt */}
                     <div>

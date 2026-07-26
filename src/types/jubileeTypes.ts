@@ -88,6 +88,9 @@ export interface NearbyGrowthResult {
   lanes: NearbyGrowthLane[];
   dependencyStatus: DependencyStatus;
   reuseStatus: ReuseStatus;
+  relationType?: 'direct' | 'inferred' | 'provisional';
+  evidenceStrength?: number; // 0.0 - 1.0
+  tensionDelta?: 'introduces' | 'holds' | 'resolves';
   evidence: LaneEvidence[];
 }
 
@@ -96,6 +99,7 @@ export interface RetrievalSnapshot {
   retrievalPolicyVersion: string;
   indexVersion: string;
   timestamp: string;
+  retrievalMode?: 'heuristic_provisional' | 'semantic_indexed';
 }
 
 export interface NearbyGrowthResponse {
@@ -105,7 +109,11 @@ export interface NearbyGrowthResponse {
 
 export type TargetProposalForm =
   | 'new_lyric'
+  | 'song_fragment'
   | 'album_concept'
+  | 'structural_idea'
+  | 'code_repair'
+  | 'learning_path'
   | 'thesis_continuation'
   | 'repair_scar'
   | 'liturgy';

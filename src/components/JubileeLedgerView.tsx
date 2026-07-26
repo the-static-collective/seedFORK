@@ -77,6 +77,23 @@ export const JubileeLedgerView: React.FC<JubileeLedgerViewProps> = ({
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(events, null, 2));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", `jubilee-ledger-export-${Date.now()}.json`);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+              }}
+              className="p-2.5 rounded-xl border border-[#2b2117]/15 bg-[#fdf8ef] text-[#2b2117] hover:bg-[#2b2117]/5 font-mono text-xs flex items-center gap-1.5 font-bold"
+              title="Export complete SHA-256 ledger stream as JSON"
+            >
+              <FileCheck className="w-4 h-4 text-[#5b8a72]" />
+              <span>Export Ledger JSON</span>
+            </button>
+
+            <button
               onClick={onRefreshLedger}
               className="p-2.5 rounded-xl border border-[#2b2117]/15 bg-white text-[#2b2117] hover:bg-[#2b2117]/5 font-mono text-xs flex items-center gap-1.5"
               title="Refresh ledger chain"
